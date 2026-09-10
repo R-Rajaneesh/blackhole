@@ -35,9 +35,24 @@ interface PendingClient {
 	port: number;
 	packetID: number;
 }
-const inFlightReq = new Map<string, PendingClient[]>();
-const pendingUpstreamIDs = new Map<number, string>();
+const inFlightReq = new Map<string, { clients: PendingClient[], timestamp: number }>();
+const pendingUpstreamIDs = new Map<number, { domainKey: string, timestamp: number }>();
 const cacheReq = new CacheManager<string, Omit<ReturnType<typeof readAnswer>, "bytesRead" | "domain">>();
+let nextInternalId = 0;
+
+setInterval(() => {
+	const now = Date.now();
+	for (const [key, value] of inFlightReq.entries()) {
+		if (now - value.timestamp > 3000) {
+			inFlightReq.delete(key);
+		}
+	}
+	for (const [key, value] of pendingUpstreamIDs.entries()) {
+		if (now - value.timestamp > 3000) {
+			pendingUpstreamIDs.delete(key);
+		}
+	}
+}, 1000);
 
 const soc = await Bun.udpSocket({
 	hostname: "0.0.0.0",
@@ -51,12 +66,15 @@ const soc = await Bun.udpSocket({
 				const BufferData = readBuffer(data);
 				let QuestionLabel: ReturnType<typeof parseQuestion> = parseQuestion(BufferData.rawBuf, 12);
 				if (raddr === address) {
-					const expectedDomainKey = pendingUpstreamIDs.get(BufferData.packetID);
+					const upstreamData = pendingUpstreamIDs.get(BufferData.packetID);
+					if (!upstreamData) return;
+					const expectedDomainKey = upstreamData.domainKey;
 					const actualDomainKey = `${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`;
 					if (expectedDomainKey !== actualDomainKey) return;
 					pendingUpstreamIDs.delete(BufferData.packetID);
 					if (BufferData.ANCount === 0) {
-						const waitingClients = inFlightReq.get(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`) || [];
+						const waitingReq = inFlightReq.get(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`);
+						const waitingClients = waitingReq ? waitingReq.clients : [];
 						inFlightReq.delete(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`);
 						for (const client of waitingClients) {
 							let buf = Buffer.from(data);
@@ -72,8 +90,8 @@ const soc = await Bun.udpSocket({
 						answer,
 						answer.ttl * 1000,
 					);
-					const waitingClients =
-						inFlightReq.get(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`) || [];
+					const waitingReq = inFlightReq.get(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`);
+					const waitingClients = waitingReq ? waitingReq.clients : [];
 					const BATCH_SIZE = 500;
 					let i = 0;
 					const sendBatch = () => {
@@ -100,13 +118,15 @@ const soc = await Bun.udpSocket({
 				}
 				if (inFlightReq.has(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`)) {
 					inFlightReq
-						.get(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`)!
+						.get(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`)!.clients
 						.push({ address, packetID: BufferData.packetID, port });
 					return;
-				} else
-					inFlightReq.set(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`, [
-						{ packetID: BufferData.packetID, address, port },
-					]);
+				} else {
+					inFlightReq.set(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`, {
+						clients: [{ packetID: BufferData.packetID, address, port }],
+						timestamp: Date.now()
+					});
+				}
 				// console.log(QuestionLabel, inFlightReq.entries());
 				// questionReadOffset += QuestionLabel.totalBytesRead;
 				// let resolvedIP =
@@ -117,14 +137,22 @@ const soc = await Bun.udpSocket({
 
 				const cacheData = cacheReq.get(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`);
 				if (!cacheData) {
-					pendingUpstreamIDs.set(
-						BufferData.packetID,
-						`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`,
-					);
-					soc.send(data, parseInt(rport), raddr); // forward the packet to external dns server.
-					setTimeout(() => {
-						inFlightReq.delete(`${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`);
-					}, 3 * 1000);
+					let internalId = nextInternalId;
+					while (pendingUpstreamIDs.has(internalId)) {
+						internalId = (internalId + 1) & 0xFFFF;
+						if (internalId === nextInternalId) break;
+					}
+					nextInternalId = (internalId + 1) & 0xFFFF;
+
+					pendingUpstreamIDs.set(internalId, {
+						domainKey: `${QuestionLabel.domain}:${QuestionLabel.class}:${QuestionLabel.type}`,
+						timestamp: Date.now()
+					});
+
+					const forwardBuf = Buffer.from(data);
+					forwardBuf.writeUInt16BE(internalId, 0);
+
+					soc.send(forwardBuf, parseInt(rport), raddr);
 					return;
 				}
 				const questions: Buffer<ArrayBuffer>[] = [];
