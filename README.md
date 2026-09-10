@@ -83,3 +83,27 @@ dig @127.0.0.1 -p 2053 google.com
 ## 📄 License
 
 Distributed under the MIT License.
+
+### Installing `dig`
+
+`dig` is a powerful command-line tool for querying DNS name servers. Depending on your OS, you may need to install it:
+
+**Debian/Ubuntu:**
+```bash
+sudo apt update
+sudo apt install dnsutils
+```
+
+**Fedora/CentOS/RHEL:**
+```bash
+sudo dnf install bind-utils
+```
+
+**macOS:**
+`dig` comes pre-installed on macOS!
+
+**Windows:**
+`dig` is not native to Windows. You can install it via [BIND](https://www.isc.org/download/) or use PowerShell's built-in equivalent:
+```powershell
+Resolve-DnsName -Name google.com -Server 127.0.0.1 -Port 2053
+```
