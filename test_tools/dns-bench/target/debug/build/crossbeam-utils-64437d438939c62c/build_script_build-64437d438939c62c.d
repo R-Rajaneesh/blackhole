@@ -1,0 +1,9 @@
+/home/rajaneeshr/Projects/blackhole/test_tools/dns-bench/target/debug/build/crossbeam-utils-64437d438939c62c/build_script_build-64437d438939c62c.d: /home/rajaneeshr/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossbeam-utils-0.8.23/build.rs /home/rajaneeshr/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossbeam-utils-0.8.23/no_atomic.rs /home/rajaneeshr/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossbeam-utils-0.8.23/build-common.rs
+
+/home/rajaneeshr/Projects/blackhole/test_tools/dns-bench/target/debug/build/crossbeam-utils-64437d438939c62c/build_script_build-64437d438939c62c: /home/rajaneeshr/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossbeam-utils-0.8.23/build.rs /home/rajaneeshr/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossbeam-utils-0.8.23/no_atomic.rs /home/rajaneeshr/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossbeam-utils-0.8.23/build-common.rs
+
+/home/rajaneeshr/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossbeam-utils-0.8.23/build.rs:
+/home/rajaneeshr/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossbeam-utils-0.8.23/no_atomic.rs:
+/home/rajaneeshr/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossbeam-utils-0.8.23/build-common.rs:
+
+# env-dep:CARGO_PKG_NAME=crossbeam-utils
