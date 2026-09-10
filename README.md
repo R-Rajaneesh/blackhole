@@ -36,7 +36,7 @@ Clone the repository and run the benchmarking tool using Cargo.
 git clone https://github.com/R-Rajaneesh/blackhole.git
 cd blackhole
 git checkout test-tools
-cd test_tools/dns-bench
+cd dns-bench
 
 # Build and run the load tester in release mode
 cargo run --release -- --server 127.0.0.1:2053 --workers 4 --qps 10000 --step 10000 --duration 5
@@ -58,8 +58,8 @@ Run your terminal as **Administrator**.
 
 ## 🏗️ Architecture
 
-- **`test_tools/dns-bench/`**: The Rust-based high-throughput benchmarking client.
-- **`test_tools/dns-dashboard/`**: An experimental UI dashboard (React/Next.js) for visualizing DNS performance metrics in real-time.
+- **`dns-bench/`**: The Rust-based high-throughput benchmarking client.
+- **`dns-dashboard/`**: An experimental UI dashboard (React/Next.js) for visualizing DNS performance metrics in real-time.
 
 ## 📄 License
 
