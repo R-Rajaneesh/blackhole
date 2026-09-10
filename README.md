@@ -1,85 +1,90 @@
-![Blackhole](src/public/blackhole.jpg)
+<div align="center">
+  <h1>🕳️ Blackhole DNS (Test Tools)</h1>
+  <p><strong>Benchmarking and diagnostic tools designed for the Blackhole DNS Proxy.</strong></p>
 
-# Blackhole
+  <p>
+    <a href="https://github.com/rust-lang/rust"><img src="https://img.shields.io/badge/Rust-1.80%2B-orange.svg" alt="Rust Version"></a>
+    <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
+  </p>
+</div>
 
-Blackhole is a DNS server running on your local machine that sucks up all your ads flowing through your network
+---
 
-## Todo
+**Blackhole (Test Tools)** contains the proprietary load testing suite and diagnostic tools used to develop, test, and profile the Blackhole DNS server.
 
-[✅] **Add a way to view live DNS queries**
+## 🌿 Project Structure & Branches
 
-[✅] **Add a way to allow blocking ads seperately and from a list**
+This repository is organized into specialized branches for different components:
 
-[❌] **Add login page**
+- **[`main`](https://github.com/R-Rajaneesh/blackhole/tree/main)**: The primary, production-grade high-performance DNS server written in **Rust**.
+- **[`bun-dns-server`](https://github.com/R-Rajaneesh/blackhole/tree/bun-dns-server)**: The experimental initial implementation of this DNS server written in TypeScript using the Bun runtime.
+- **[`test-tools`](https://github.com/R-Rajaneesh/blackhole/tree/test-tools)**: (You are here) Dedicated benchmarking and load-testing suites (`dns-bench`) used to validate the performance ceilings of Blackhole.
 
-[❌] **Make dashboard look much nicer**
+## 🚀 DNS Bench
 
-[❌] **Implement features from** [pi-hole](https://github.com/pi-hole/pi-hole)
+`dns-bench` is a highly concurrent, multi-threaded UDP load generator specifically built to flood DNS servers and measure packet drop rates, average latency, and p99 tail latencies. 
 
-## Installation
+### Prerequisites
 
-### Setting up
-```
-git clone https://github.com/r-rajaneesh/blackhole.git Blackhole
+You will need Rust and Cargo installed on your system.
 
-cd Blackhole
+### Building and Running
 
-install.bat
-```
+Clone the repository and run the benchmarking tool using Cargo. 
 
-## Running the server
+```bash
+git clone https://github.com/R-Rajaneesh/blackhole.git
+cd blackhole
+git checkout test-tools
+cd test_tools/dns-bench
 
-```
-npm run start
-```
-
-## Author
-
-[Rajaneesh R](https://r-rajaneesh.vercel.app)
-
-
-
-# Blackhole
-
-Blackhole is a lightweight DNS ad-blocker that blocks all ads running through the network. It is a powerful tool for users who want to improve their web browsing experience and protect their privacy by blocking annoying ads and tracking scripts.
-
-# Features
-
-* Blocks nearly 1 million ad domains
-* Runs a DNS server connected with the Operating system on 127.0.0.1
-* Lightweight and fast
-* Written in Node.js and Typescript
-
-# How it Works
-
-Blackhole runs a DNS server on your local machine that blocks all requests to known ad domains by resolving them to the localhost (127.0.0.1). This means that when your computer tries to connect to an ad domain, Blackhole will intercept the request and return a null response, effectively blocking the ad from being displayed or loaded.
-
-# Installation
-
-To install Blackhole, simply clone the repository and install the necessary dependencies:
-
-```
-$ git clone https://github.com/r-rajaneesh/blackhole.git
-$ cd blackhole
-$ npm install
+# Build and run the load tester in release mode
+cargo run --release -- --server 127.0.0.1:2053 --workers 4 --qps 10000 --step 10000 --duration 5
 ```
 
-Once installed, you can start the Blackhole DNS server by running the following command:
+### ⚠️ A Note on Port 53 Testing
 
+If you are testing a DNS server running on port `53`, you specify it using `--server 127.0.0.1:53`. Unlike binding to port 53 to *listen* for queries, generating outbound requests to a server on port 53 **does not** require root or administrative privileges on Linux or Windows. 
+
+However, if you are *running* the actual Blackhole DNS server on port 53 (on another terminal or server), that instance will require root/Administrator privileges.
+
+**Linux (Server side):**
+```bash
+sudo target/release/blackhole --bind 0.0.0.0:53
 ```
-$ npm start
+
+**Windows (Server side):**
+Run your terminal as **Administrator**.
+
+## 🏗️ Architecture
+
+- **`test_tools/dns-bench/`**: The Rust-based high-throughput benchmarking client.
+- **`test_tools/dns-dashboard/`**: An experimental UI dashboard (React/Next.js) for visualizing DNS performance metrics in real-time.
+
+## 📄 License
+
+Distributed under the MIT License.
+
+### Installing `dig`
+
+`dig` is a powerful command-line tool for querying DNS name servers. Depending on your OS, you may need to install it:
+
+**Debian/Ubuntu:**
+```bash
+sudo apt update
+sudo apt install dnsutils
 ```
 
-This will start the DNS server on your local machine, listening on port 53. You can configure your Operating system to use this DNS server by setting the DNS server address to 127.0.0.1.
+**Fedora/CentOS/RHEL:**
+```bash
+sudo dnf install bind-utils
+```
 
-# Alternatives
-Blackhole is a great alternative to other popular ad-blocking solutions like Pi-hole. While Pi-hole is a great tool, it can be more complicated to set up and maintain, especially for less technical users. Blackhole is designed to be simple, fast, and lightweight, making it a great choice for anyone who wants to block ads without a lot of hassle.
+**macOS:**
+`dig` comes pre-installed on macOS!
 
-# License
-Blackhole is licensed under the GPL-3.0 License.
-
-# Contributing
-We welcome contributions from anyone who is interested in helping improve Blackhole. To contribute, simply fork the repository, make your changes, and submit a pull request. We appreciate your help and feedback!
-
-# Credits
-Blackhole was created by [Rajaneesh R](https://r-rajaneesh.vercel.app).
+**Windows:**
+`dig` is not native to Windows. You can install it via [BIND](https://www.isc.org/download/) or use PowerShell's built-in equivalent:
+```powershell
+Resolve-DnsName -Name google.com -Server 127.0.0.1 -Port 53
+```
