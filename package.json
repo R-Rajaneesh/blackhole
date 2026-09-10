@@ -1,0 +1,16 @@
+{
+	"name": "blackhole",
+	"module": "src/index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "bun --watch src/index.ts",
+		"test": "bun test"
+	},
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^7"
+	}
+}
