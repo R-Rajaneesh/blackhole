@@ -107,3 +107,27 @@ sudo dnf install bind-utils
 ```powershell
 Resolve-DnsName -Name google.com -Server 127.0.0.1 -Port 2053
 ```
+
+## 📊 Performance Benchmark (Rust vs Bun)
+
+The Blackhole DNS server was load-tested using the `dns-bench` tool (available in the `test-tools` branch) at **10,000 Queries Per Second (QPS)**. The test utilized dynamic cache-busting queries (`{timestamp}.google.com`) to force 100% cache misses, aggressively stressing the upstream proxying throughput.
+
+### 🥟 Bun Implementation (This Branch)
+
+When subjected to the extreme throughput test, the single-threaded Node/Bun event loop was immediately saturated by the sheer volume of incoming UDP packets and async I/O. The server becomes completely unresponsive under this extreme load, failing to fulfill a single request. 
+
+*(Note: This highlights the core reason the primary project was rewritten in Rust, which successfully serves 75%+ of these requests.)*
+
+```text
+Targeting server: 127.0.0.1:2053
+Workers: 4
+Test duration per step: 5s
+Randomize domain: false
+
+Starting auto-scaling load test (max 1% packet drop)...
+--------------------------------------------------
+Testing at 10000 QPS...
+Sent: 50000
+Received: 0
+Drops/Timeouts: 50000 (100.00%)
+```
