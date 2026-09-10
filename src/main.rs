@@ -1,3 +1,4 @@
+use clap::Parser;
 use dashmap::DashMap;
 mod dns;
 use dns::builder::*;
@@ -9,8 +10,6 @@ use std::io::Result;
 use std::io::{Error, ErrorKind};
 use std::net::SocketAddr;
 use std::sync::Arc;
-
-
 
 async fn build_and_send_response(
     socket: Arc<tokio::net::UdpSocket>,
@@ -93,13 +92,14 @@ async fn build_and_send_response(
 }
 
 async fn start_listener(
-    port: u16,
+    bind_addr: String,
+    forwarder: String,
     cached_domains: Arc<DashMap<Question, (u32, Answer)>>,
 ) -> std::io::Result<()> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
     socket.set_reuse_port(true)?;
     socket.set_nonblocking(true)?;
-    let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
+    let addr: SocketAddr = bind_addr.parse().unwrap();
     socket.bind(&addr.into())?;
 
     let std_socket: std::net::UdpSocket = socket.into();
@@ -153,12 +153,13 @@ async fn start_listener(
             continue;
         }
 
+        let forwarder_clone = forwarder.clone();
         tokio::task::spawn(async move {
             let mut answers: Vec<Answer> = Vec::new();
             let mut is_nxdomain = false;
             for question in &questions {
                 let packet = create_packet(header.clone(), question.clone(), None);
-                match forward_request(packet).await {
+                match forward_request(packet, forwarder_clone.clone()).await {
                     Ok(res_buf) => {
                         let mut upstream_visited = HashMap::new();
                         let mut temp_questions: Vec<Question> = Vec::new();
@@ -205,24 +206,48 @@ async fn start_listener(
     }
 }
 
+#[derive(Parser, Debug, Clone)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// IP and port to listen on
+    #[arg(short, long, default_value = "0.0.0.0:2053")]
+    bind: String,
+
+    /// IP and port of the upstream DNS forwarder
+    #[arg(short, long, default_value = "1.1.1.1:53")]
+    forwarder: String,
+}
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    let args = Args::parse();
     let cached_domains: Arc<DashMap<Question, (u32, Answer)>> = Arc::new(DashMap::new());
 
     let cores = num_cpus::get();
+
+    println!(
+        "Starting Blackhole DNS server on {} with {} workers...",
+        args.bind, cores
+    );
+    println!("Forwarding uncached queries to {}...", args.forwarder);
+
     for _ in 0..cores {
         let cache_clone = Arc::clone(&cached_domains);
+        let bind_clone = args.bind.clone();
+        let forwarder_clone = args.forwarder.clone();
         tokio::spawn(async move {
-            start_listener(53, cache_clone).await.unwrap();
+            start_listener(bind_clone, forwarder_clone, cache_clone)
+                .await
+                .unwrap();
         });
     }
 
     std::future::pending::<()>().await;
     Ok(())
 }
-async fn forward_request(upstream_request_buf: Vec<u8>) -> Result<Vec<u8>> {
+async fn forward_request(upstream_request_buf: Vec<u8>, forwarder: String) -> Result<Vec<u8>> {
     let ups_socket = tokio::net::UdpSocket::bind("0.0.0.0:0").await?;
-    ups_socket.connect("1.1.1.1:53").await?;
+    ups_socket.connect(&forwarder).await?;
     ups_socket.send(&upstream_request_buf[..]).await?;
     let mut upstream_response_buf = [0u8; 512];
     match tokio::time::timeout(
