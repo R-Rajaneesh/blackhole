@@ -1,4 +1,4 @@
-pub const NULL:i32 = 0x00;
+pub const NULL: i32 = 0x00;
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 #[repr(C)]
 pub struct Question {
